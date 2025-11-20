@@ -29,9 +29,24 @@ export async function generateQuestions(
 
   try {
     console.log('🤖 Calling Groq API to generate questions...');
+    console.log('📄 Resume length:', resumeText.length, 'characters');
+
+    // Use full resume text, but limit to 4000 chars to stay within token limits
+    const resumeContent = resumeText.substring(0, 4000);
 
     const prompt = `You are an expert technical interviewer for ${role} position. 
-Create ${numQuestions} interview questions based on this resume: ${resumeText.substring(0, 800)}
+
+Analyze this complete resume and create ${numQuestions} personalized interview questions:
+
+RESUME:
+${resumeContent}
+
+Focus on:
+- Technical skills mentioned
+- Projects and their technologies
+- Work experience and achievements
+- Education and certifications
+- Specific tools and frameworks listed
 
 Return ONLY a valid JSON array with this exact structure (no other text):
 [{
@@ -47,7 +62,7 @@ Return ONLY a valid JSON array with this exact structure (no other text):
       messages: [{ role: 'user', content: prompt }],
       model: MODEL,
       temperature: 0.7,
-      max_tokens: 2000,
+      max_tokens: 2500, // Increased for more detailed questions
     });
 
     const content = response.choices[0]?.message?.content || '';
@@ -85,12 +100,18 @@ export async function generateInterviewerResponse(
   }
 
   try {
+    // Use more resume context for better follow-up questions
+    const resumeContext = resumeText.substring(0, 2000);
+
     const systemPrompt = `You are an experienced ${role} interviewer conducting a professional interview. 
-Resume context: ${resumeText.substring(0, 500)}
+
+CANDIDATE'S RESUME SUMMARY:
+${resumeContext}
 
 Guidelines:
-- Ask thoughtful follow-up questions based on candidate responses
-- Probe deeper into technical details when relevant
+- Ask thoughtful follow-up questions based on candidate responses and their resume
+- Reference specific projects, skills, or experiences from their resume when relevant
+- Probe deeper into technical details when appropriate
 - Keep questions concise (1-2 sentences)
 - Be professional but friendly
 - After 5-7 exchanges, naturally conclude the interview
@@ -105,7 +126,7 @@ Guidelines:
       messages: messages as any,
       model: MODEL,
       temperature: 0.8,
-      max_tokens: 200,
+      max_tokens: 250, // Increased for more detailed follow-ups
     });
 
     return response.choices[0]?.message?.content || "Thank you for sharing. What else can you tell me?";
@@ -134,13 +155,30 @@ export async function generateReport(
       `Q${i + 1}: ${questions[i]?.text}\nA: ${r.transcription}`
     ).join('\n\n');
 
-    const prompt = `You are an interview coach. Evaluate this ${role} interview.
+    // Use more transcript content for better analysis (up to 3500 chars)
+    const transcriptContent = transcript.substring(0, 3500);
 
-Transcript:
-${transcript.substring(0, 2000)}
+    const avgLoudness = responses.reduce((s, r) => s + r.audioMetrics.loudness, 0) / responses.length;
+    const totalFillers = responses.reduce((s, r) => s + r.audioMetrics.fillerCount, 0);
+    const avgSmile = responses.reduce((s, r) => s + r.faceMetrics.smile, 0) / responses.length;
+    const avgEyeContact = responses.reduce((s, r) => s + r.faceMetrics.eyeContact, 0) / responses.length;
 
-Audio: avg loudness ${responses.reduce((s, r) => s + r.audioMetrics.loudness, 0) / responses.length}, fillers ${responses.reduce((s, r) => s + r.audioMetrics.fillerCount, 0)}
-Face: avg smile ${responses.reduce((s, r) => s + r.faceMetrics.smile, 0) / responses.length}, eye contact ${responses.reduce((s, r) => s + r.faceMetrics.eyeContact, 0) / responses.length}
+    const prompt = `You are an interview coach. Evaluate this ${role} interview comprehensively.
+
+INTERVIEW TRANSCRIPT:
+${transcriptContent}
+
+PERFORMANCE METRICS:
+- Voice: Average loudness ${avgLoudness.toFixed(1)}, Total filler words: ${totalFillers}
+- Facial: Average smile ${avgSmile.toFixed(2)}, Average eye contact ${avgEyeContact.toFixed(2)}
+- Total responses: ${responses.length}
+
+Provide detailed evaluation considering:
+1. Technical knowledge and accuracy
+2. Communication clarity and structure
+3. Confidence and tone
+4. Body language and engagement
+5. Speaking fluency and pace
 
 Return ONLY valid JSON (no other text):
 {
@@ -157,7 +195,7 @@ Return ONLY valid JSON (no other text):
       ],
       model: MODEL,
       temperature: 0.5,
-      max_tokens: 2000,
+      max_tokens: 3000, // Increased for comprehensive feedback
     });
 
     let content = response.choices[0]?.message?.content || '';
@@ -237,6 +275,33 @@ function generateDefaultQuestions(role: string, numQuestions: number, difficulty
       'How do you approach database design and optimization?',
       'What is your deployment and DevOps experience?',
     ],
+    'Mobile Developer': [
+      'Describe your experience with mobile app development',
+      'How do you handle different screen sizes and device compatibility?',
+      'Tell me about your approach to mobile app performance optimization',
+      'What is your experience with native vs cross-platform development?',
+      'How do you handle offline functionality in mobile apps?',
+      'Describe your approach to mobile app security',
+      'What is your experience with app store deployment?',
+    ],
+    'Software Engineer': [
+      'Tell me about your software development experience',
+      'How do you approach system design and architecture?',
+      'Describe a complex technical problem you solved',
+      'What is your experience with design patterns?',
+      'How do you ensure code quality and maintainability?',
+      'Tell me about your experience with testing and CI/CD',
+      'How do you approach performance optimization?',
+    ],
+    'Web Developer': [
+      'Describe your web development experience',
+      'How do you ensure website accessibility and SEO?',
+      'Tell me about your experience with modern web technologies',
+      'What is your approach to web performance optimization?',
+      'How do you handle browser compatibility issues?',
+      'Describe your experience with web security best practices',
+      'What is your experience with content management systems?',
+    ],
     'Data Scientist': [
       'Describe your experience with machine learning algorithms',
       'How do you handle data preprocessing and cleaning?',
@@ -246,14 +311,41 @@ function generateDefaultQuestions(role: string, numQuestions: number, difficulty
       'Describe your experience with data visualization',
       'How do you handle imbalanced datasets?',
     ],
-    'Product Manager': [
-      'How do you prioritize features in a product roadmap?',
-      'Describe your approach to user research and validation',
-      'Tell me about a product launch you managed',
-      'How do you handle conflicting stakeholder requirements?',
-      'What metrics do you use to measure product success?',
-      'Describe a time you had to pivot a product strategy',
-      'How do you work with engineering teams?',
+    'Data Analyst': [
+      'Tell me about your experience with data analysis tools',
+      'How do you approach data visualization and reporting?',
+      'Describe a time when your analysis led to business insights',
+      'What is your experience with SQL and database querying?',
+      'How do you ensure data quality and accuracy?',
+      'Tell me about your experience with statistical analysis',
+      'How do you present complex data to non-technical audiences?',
+    ],
+    'Machine Learning Engineer': [
+      'Describe your experience with ML model development and deployment',
+      'How do you approach feature engineering?',
+      'Tell me about your experience with deep learning frameworks',
+      'What is your approach to model optimization and tuning?',
+      'How do you handle model monitoring in production?',
+      'Describe your experience with MLOps practices',
+      'What is your experience with distributed training?',
+    ],
+    'AI Engineer': [
+      'Tell me about your experience with AI systems development',
+      'How do you approach natural language processing tasks?',
+      'Describe your experience with computer vision applications',
+      'What is your approach to AI model evaluation?',
+      'How do you handle AI ethics and bias in models?',
+      'Tell me about your experience with AI deployment at scale',
+      'What is your experience with reinforcement learning?',
+    ],
+    'Data Engineer': [
+      'Describe your experience with data pipeline development',
+      'How do you approach data warehouse design?',
+      'Tell me about your experience with ETL processes',
+      'What is your approach to data quality and validation?',
+      'How do you handle large-scale data processing?',
+      'Describe your experience with cloud data platforms',
+      'What is your experience with real-time data streaming?',
     ],
     'DevOps Engineer': [
       'Describe your experience with CI/CD pipelines',
@@ -263,6 +355,114 @@ function generateDefaultQuestions(role: string, numQuestions: number, difficulty
       'How do you ensure high availability and disaster recovery?',
       'Describe a complex infrastructure problem you solved',
       'What is your experience with cloud platforms?',
+    ],
+    'Cloud Engineer': [
+      'Tell me about your experience with cloud architecture',
+      'How do you approach cloud cost optimization?',
+      'Describe your experience with cloud security best practices',
+      'What is your approach to cloud migration strategies?',
+      'How do you handle multi-cloud or hybrid cloud environments?',
+      'Tell me about your experience with serverless architectures',
+      'What is your experience with cloud automation?',
+    ],
+    'Site Reliability Engineer': [
+      'Describe your experience with system reliability and uptime',
+      'How do you approach incident management and response?',
+      'Tell me about your experience with monitoring and observability',
+      'What is your approach to capacity planning?',
+      'How do you implement SLOs and SLIs?',
+      'Describe your experience with automation and tooling',
+      'What is your experience with performance optimization?',
+    ],
+    'System Administrator': [
+      'Tell me about your experience with system administration',
+      'How do you approach server management and maintenance?',
+      'Describe your experience with network configuration',
+      'What is your approach to system security and hardening?',
+      'How do you handle backup and disaster recovery?',
+      'Tell me about your experience with automation scripts',
+      'What is your experience with virtualization technologies?',
+    ],
+    'Security Engineer': [
+      'Describe your experience with security architecture',
+      'How do you approach threat modeling and risk assessment?',
+      'Tell me about your experience with penetration testing',
+      'What is your approach to security incident response?',
+      'How do you implement security best practices in development?',
+      'Describe your experience with security compliance standards',
+      'What is your experience with security automation?',
+    ],
+    'QA Engineer': [
+      'Tell me about your experience with quality assurance',
+      'How do you approach test planning and strategy?',
+      'Describe your experience with manual and automated testing',
+      'What is your approach to bug tracking and reporting?',
+      'How do you ensure test coverage?',
+      'Tell me about your experience with performance testing',
+      'What is your experience with API testing?',
+    ],
+    'Test Automation Engineer': [
+      'Describe your experience with test automation frameworks',
+      'How do you approach test automation strategy?',
+      'Tell me about your experience with CI/CD integration',
+      'What is your approach to maintaining test automation suites?',
+      'How do you handle flaky tests?',
+      'Describe your experience with different testing types',
+      'What is your experience with test reporting and metrics?',
+    ],
+    'UI/UX Designer': [
+      'Tell me about your design process and methodology',
+      'How do you approach user research and testing?',
+      'Describe a challenging design problem you solved',
+      'What is your experience with design tools and prototyping?',
+      'How do you balance user needs with business requirements?',
+      'Tell me about your experience with accessibility design',
+      'What is your approach to design systems?',
+    ],
+    'Product Manager': [
+      'How do you prioritize features in a product roadmap?',
+      'Describe your approach to user research and validation',
+      'Tell me about a product launch you managed',
+      'What metrics do you use to measure product success?',
+      'How do you handle conflicting stakeholder requirements?',
+      'Describe a time you had to pivot a product strategy',
+      'What is your experience working with engineering teams?',
+    ],
+    'Product Designer': [
+      'Tell me about your product design process',
+      'How do you balance aesthetics with functionality?',
+      'Describe your experience with user-centered design',
+      'What is your approach to design iteration and feedback?',
+      'How do you collaborate with product managers and engineers?',
+      'Tell me about your experience with design systems',
+      'What is your approach to measuring design success?',
+    ],
+    'Business Analyst': [
+      'Describe your experience with business analysis',
+      'How do you gather and document requirements?',
+      'Tell me about your experience with process improvement',
+      'What is your approach to stakeholder management?',
+      'How do you translate business needs into technical requirements?',
+      'Describe your experience with data analysis and reporting',
+      'What is your experience with business process modeling?',
+    ],
+    'Technical Writer': [
+      'Tell me about your technical writing experience',
+      'How do you approach documentation for different audiences?',
+      'Describe your experience with API documentation',
+      'What is your approach to keeping documentation up-to-date?',
+      'How do you collaborate with engineering teams?',
+      'Tell me about your experience with documentation tools',
+      'What is your approach to information architecture?',
+    ],
+    'Scrum Master': [
+      'Describe your experience with Agile methodologies',
+      'How do you facilitate sprint planning and retrospectives?',
+      'Tell me about a time you resolved team conflicts',
+      'What is your approach to removing impediments?',
+      'How do you measure team velocity and productivity?',
+      'Describe your experience with scaling Agile practices',
+      'What is your approach to coaching teams on Agile principles?',
     ],
   };
 

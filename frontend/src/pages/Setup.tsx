@@ -117,12 +117,42 @@ export default function Setup() {
                   onChange={(e) => setRole(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 >
-                  <option>Frontend Developer</option>
-                  <option>Backend Developer</option>
-                  <option>Full Stack Developer</option>
-                  <option>Data Scientist</option>
-                  <option>Product Manager</option>
-                  <option>DevOps Engineer</option>
+                  <optgroup label="Software Development">
+                    <option>Frontend Developer</option>
+                    <option>Backend Developer</option>
+                    <option>Full Stack Developer</option>
+                    <option>Mobile Developer</option>
+                    <option>Software Engineer</option>
+                    <option>Web Developer</option>
+                  </optgroup>
+                  <optgroup label="Data & AI">
+                    <option>Data Scientist</option>
+                    <option>Data Analyst</option>
+                    <option>Machine Learning Engineer</option>
+                    <option>AI Engineer</option>
+                    <option>Data Engineer</option>
+                  </optgroup>
+                  <optgroup label="Infrastructure & Operations">
+                    <option>DevOps Engineer</option>
+                    <option>Cloud Engineer</option>
+                    <option>Site Reliability Engineer</option>
+                    <option>System Administrator</option>
+                  </optgroup>
+                  <optgroup label="Security & Quality">
+                    <option>Security Engineer</option>
+                    <option>QA Engineer</option>
+                    <option>Test Automation Engineer</option>
+                  </optgroup>
+                  <optgroup label="Design & Product">
+                    <option>UI/UX Designer</option>
+                    <option>Product Manager</option>
+                    <option>Product Designer</option>
+                  </optgroup>
+                  <optgroup label="Other">
+                    <option>Business Analyst</option>
+                    <option>Technical Writer</option>
+                    <option>Scrum Master</option>
+                  </optgroup>
                 </select>
               </div>
 

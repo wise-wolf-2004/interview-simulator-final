@@ -125,7 +125,14 @@ export default function Dashboard() {
 
         {/* Recent Reports */}
         <div className="bg-white rounded-xl shadow-md p-6 mb-8">
-          <h2 className="text-xl font-bold mb-4">Recent Interview Reports</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold">Recent Interview Reports</h2>
+            {reports.length > 0 && (
+              <Link to="/history" className="text-indigo-600 hover:text-indigo-700 font-medium">
+                View All →
+              </Link>
+            )}
+          </div>
           
           {loading ? (
             <p className="text-gray-600">Loading...</p>
@@ -145,7 +152,15 @@ export default function Dashboard() {
                 <div
                   key={report.reportId}
                   className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition cursor-pointer"
-                  onClick={() => navigate(`/report/${report.reportId}`)}
+                  onClick={async () => {
+                    try {
+                      const response = await axios.get(`http://localhost:3001/api/report/${report.reportId}`);
+                      navigate('/report', { state: { reportId: report.reportId, report: response.data } });
+                    } catch (error) {
+                      console.error('Error loading report:', error);
+                      alert('Failed to load report');
+                    }
+                  }}
                 >
                   <div className="flex justify-between items-center">
                     <div>
@@ -167,7 +182,14 @@ export default function Dashboard() {
 
         {/* Recent Sessions */}
         <div className="bg-white rounded-xl shadow-md p-6">
-          <h2 className="text-xl font-bold mb-4">Interview History</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold">Interview History</h2>
+            {sessions.length > 0 && (
+              <Link to="/history" className="text-indigo-600 hover:text-indigo-700 font-medium">
+                View All →
+              </Link>
+            )}
+          </div>
           
           {sessions.length === 0 ? (
             <p className="text-gray-600">No interview sessions yet</p>

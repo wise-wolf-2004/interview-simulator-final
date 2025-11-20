@@ -32,7 +32,14 @@ export default function InterviewChat() {
   const [isRecording, setIsRecording] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [timer, setTimer] = useState(0);
-  const [liveMetrics, setLiveMetrics] = useState({ tone: 'Neutral', eyeContact: '0%' });
+  const [liveMetrics, setLiveMetrics] = useState({
+    tone: 'Neutral',
+    eyeContact: '0%',
+    volume: 'Normal',
+    emotion: 'Neutral',
+    posture: 'Centered',
+    confidence: 0
+  });
   const [isThinking, setIsThinking] = useState(false);
   const [sessionData, setSessionData] = useState<any[]>([]);
   const [timeUp, setTimeUp] = useState(false);
@@ -217,11 +224,62 @@ export default function InterviewChat() {
           
           voiceAnalyzerRef.current.addSample(audioMetrics.pitch, audioMetrics.loudness);
 
-          // Update live metrics
+          // Calculate accurate live metrics
           const faceMetrics = await analyzeFace(videoRef.current);
+          
+          // Determine tone based on loudness
+          let tone = 'Quiet';
+          if (audioMetrics.loudness > 60) tone = 'Confident';
+          else if (audioMetrics.loudness > 40) tone = 'Clear';
+          else if (audioMetrics.loudness > 20) tone = 'Normal';
+          
+          // Determine volume level
+          let volume = 'Low';
+          if (audioMetrics.loudness > 70) volume = 'High';
+          else if (audioMetrics.loudness > 40) volume = 'Good';
+          else if (audioMetrics.loudness > 20) volume = 'Normal';
+          
+          // Get dominant emotion
+          let emotion = 'Neutral';
+          let maxEmotionValue = 0;
+          if (faceDetection?.expressions) {
+            const expressions = faceDetection.expressions;
+            Object.entries(expressions).forEach(([key, value]) => {
+              if (value > maxEmotionValue) {
+                maxEmotionValue = value;
+                emotion = key.charAt(0).toUpperCase() + key.slice(1);
+              }
+            });
+          }
+          
+          // Determine posture
+          let posture = 'Centered';
+          if (faceDetection) {
+            const box = faceDetection.detection.box;
+            const videoWidth = videoRef.current.videoWidth;
+            const centerX = box.x + box.width / 2;
+            const relativePosition = centerX / videoWidth;
+            
+            if (relativePosition < 0.35) posture = 'Left';
+            else if (relativePosition > 0.65) posture = 'Right';
+            else posture = 'Centered';
+          }
+          
+          // Calculate confidence score (0-100)
+          const confidence = Math.round(
+            (faceMetrics.eyeContact * 30) + // 30% weight on eye contact
+            (faceMetrics.smile * 20) + // 20% weight on smile
+            (Math.min(audioMetrics.loudness / 100, 1) * 30) + // 30% weight on volume
+            (faceDetection ? 20 : 0) // 20% weight on face detection
+          );
+
           setLiveMetrics({
-            tone: audioMetrics.loudness > 50 ? 'Confident' : 'Calm',
+            tone,
             eyeContact: `${Math.round(faceMetrics.eyeContact * 100)}%`,
+            volume,
+            emotion,
+            posture,
+            confidence
           });
         } catch (error) {
           console.error('Metrics tracking error:', error);
@@ -542,23 +600,82 @@ export default function InterviewChat() {
                 ref={videoRef}
                 autoPlay
                 muted
-                className="w-full rounded-lg bg-gray-900"
+                playsInline
+                className="w-full h-64 rounded-lg bg-gray-900 object-cover"
               />
             </div>
 
             <div className="bg-white rounded-lg shadow-lg p-6">
               <h3 className="font-semibold mb-4">Live Metrics</h3>
               <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Tone:</span>
-                  <span className="font-semibold text-indigo-600">{liveMetrics.tone}</span>
+                {/* Confidence Score */}
+                <div className="mb-4">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm font-medium text-gray-700">Confidence</span>
+                    <span className="text-sm font-bold text-indigo-600">{liveMetrics.confidence}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full transition-all duration-500 ${
+                        liveMetrics.confidence >= 70 ? 'bg-green-500' :
+                        liveMetrics.confidence >= 40 ? 'bg-yellow-500' : 'bg-red-500'
+                      }`}
+                      style={{ width: `${liveMetrics.confidence}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Eye Contact:</span>
+
+                {/* Eye Contact */}
+                <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">👁️</span>
+                    <span className="text-sm text-gray-600">Eye Contact</span>
+                  </div>
                   <span className="font-semibold text-indigo-600">{liveMetrics.eyeContact}</span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Exchanges:</span>
+
+                {/* Tone */}
+                <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🎤</span>
+                    <span className="text-sm text-gray-600">Tone</span>
+                  </div>
+                  <span className="font-semibold text-indigo-600">{liveMetrics.tone}</span>
+                </div>
+
+                {/* Volume */}
+                <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🔊</span>
+                    <span className="text-sm text-gray-600">Volume</span>
+                  </div>
+                  <span className="font-semibold text-indigo-600">{liveMetrics.volume}</span>
+                </div>
+
+                {/* Emotion */}
+                <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">😊</span>
+                    <span className="text-sm text-gray-600">Emotion</span>
+                  </div>
+                  <span className="font-semibold text-indigo-600">{liveMetrics.emotion}</span>
+                </div>
+
+                {/* Posture */}
+                <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🧍</span>
+                    <span className="text-sm text-gray-600">Posture</span>
+                  </div>
+                  <span className="font-semibold text-indigo-600">{liveMetrics.posture}</span>
+                </div>
+
+                {/* Exchanges */}
+                <div className="flex justify-between items-center py-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">💬</span>
+                    <span className="text-sm text-gray-600">Exchanges</span>
+                  </div>
                   <span className="font-semibold text-indigo-600">{Math.floor(messages.length / 2)}</span>
                 </div>
               </div>

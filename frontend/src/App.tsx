@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import Setup from './pages/Setup';
 import InterviewChat from './pages/InterviewChat';
 import Report from './pages/Report';
+import History from './pages/History';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/history" element={<History />} />
           <Route path="/setup" element={<Setup />} />
           <Route path="/interview" element={<InterviewChat />} />
           <Route path="/report" element={<Report />} />

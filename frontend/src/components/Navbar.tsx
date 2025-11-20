@@ -50,6 +50,16 @@ export default function Navbar() {
                   Dashboard
                 </Link>
                 <Link
+                  to="/history"
+                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                    isActive('/history')
+                      ? 'bg-indigo-600 text-white'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  History
+                </Link>
+                <Link
                   to="/setup"
                   className={`px-4 py-2 rounded-lg font-medium transition-all ${
                     isActive('/setup')
@@ -139,6 +149,17 @@ export default function Navbar() {
                   }`}
                 >
                   Dashboard
+                </Link>
+                <Link
+                  to="/history"
+                  onClick={() => setIsMenuOpen(false)}
+                  className={`block px-4 py-2 rounded-lg transition-all ${
+                    isActive('/history')
+                      ? 'bg-indigo-600 text-white'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  History
                 </Link>
                 <Link
                   to="/setup"
